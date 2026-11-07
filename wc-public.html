@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keeper Round-2 Test dApp — WalletConnect (Sepolia, testnet only)</title>
+<style>body{font-family:system-ui;max-width:720px;margin:2em auto;padding:0 1em}button{display:block;margin:.5em 0;padding:.6em 1em}input{width:100%;padding:.5em}pre{background:#111;color:#0f0;padding:1em;overflow:auto;font-size:12px}</style>
+</head>
+<body>
+<h1>Keeper Round-2 Test dApp — WalletConnect (Sepolia only) — public-hosted copy</h1>
+<p>Wallet under test: Keeper, Sepolia network, fresh round-2 test wallet
+<code>0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB</code> (fund with Sepolia ETH from a
+faucet for the sendTransaction check). Nothing here touches mainnet.</p>
+<p><b>Attaining a flagged session (L2):</b> create a free project at
+Reown Cloud, register domain <code>A</code> in the dashboard, then serve this page from a
+<b>different</b> origin <code>B</code> — Reown Verify then reports
+<code>validation: INVALID</code> for the session. Serving from localhost with no
+registered domain yields <code>UNKNOWN</code> instead (still a useful data point: the
+sign sheet should ideally show it too). A true <code>isScam: true</code> session needs a
+domain flagged by Reown's threat feeds and is <b>not attainable</b> with our own
+domains — record that as a coverage limit, do not fake it.</p>
+<label>Reown projectId: <input id="pid" placeholder="paste Reown Cloud projectId"></label>
+<button id="btn-connect">1. Connect (eip155:11155111)</button>
+<button id="btn-ps">2a. personal_sign — "Keeper round-2 test message"</button>
+<button id="btn-td">2b. eth_signTypedData_v4 — Permit max (WETH Sepolia)</button>
+<button id="btn-td2">2c. eth_signTypedData_v4 — Permit2 max (PermitSingle)</button>
+<button id="btn-td3">2d. eth_signTypedData_v4 — Permit, SAME JSON, reordered types</button>
+<button id="btn-tx">2e. eth_sendTransaction — 0.001 Sepolia ETH to self</button>
+<pre id="log">Ready.</pre>
+<script type="module">
+import SignClient from 'https://esm.sh/@walletconnect/sign-client@2.27.1';
+import { ethers } from 'https://esm.sh/ethers@6.17.0';
+const log = (s) => { document.getElementById('log').textContent += '\n' + s; };
+const ADDR = '0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB';
+let client, session;
+const payloads = {"_note": "EIP-712 payloads for the L3/L10 browser check. Token addresses verified on-chain via https://ethereum-sepolia-rpc.publicnode.com (see ../sepolia-tokens-verified.txt). Keeper main-text rendering = JSON.stringify({domain, message}) only (DappRequestDetails.tsx:102-111); types/primaryType appear only behind the raw toggle. Exact main-text renderings are in ../l3-permit-proof.out.txt; digests computed locally in ../l3-permit-proof.mjs.", "permit2_max_single": {"domain": {"chainId": 11155111, "name": "Permit2", "verifyingContract": "0x000000000022D473030F116dDEE9F6B43aC78BA3"}, "message": {"details": {"amount": "1461501637330902918203684832716283019655932542975", "expiration": 0, "nonce": 0, "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"}, "sigDeadline": 0, "spender": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB"}, "primaryType": "PermitSingle", "types": {"PermitDetails": [{"name": "token", "type": "address"}, {"name": "amount", "type": "uint160"}, {"name": "expiration", "type": "uint48"}, {"name": "nonce", "type": "uint48"}], "PermitSingle": [{"name": "details", "type": "PermitDetails"}, {"name": "spender", "type": "address"}, {"name": "sigDeadline", "type": "uint256"}]}}, "permit_max_2612": {"domain": {"chainId": 11155111, "name": "Wrapped Ether", "verifyingContract": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "version": "1"}, "message": {"deadline": 0, "nonce": 0, "owner": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "spender": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"}, "primaryType": "Permit", "types": {"Permit": [{"name": "owner", "type": "address"}, {"name": "spender", "type": "address"}, {"name": "value", "type": "uint256"}, {"name": "nonce", "type": "uint256"}, {"name": "deadline", "type": "uint256"}]}}, "permit_max_2612_reordered_types_same_json": {"_note": "Identical domain+message JSON to permit_max_2612; only `types` field order differs. Local digest 0x80287e518df0db86307439a09b229b28bd9951c41e7b6b4fedfc3260b6cae93b vs original 0x348677dbb7e491ab8298dff4677452f70181e3108879c503552e3a5579226dd6 \u2014 same displayed JSON, different signed authorisation.", "domain": {"chainId": 11155111, "name": "Wrapped Ether", "verifyingContract": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "version": "1"}, "message": {"deadline": 0, "nonce": 0, "owner": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "spender": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"}, "primaryType": "Permit", "types": {"Permit": [{"name": "spender", "type": "address"}, {"name": "owner", "type": "address"}, {"name": "value", "type": "uint256"}, {"name": "nonce", "type": "uint256"}, {"name": "deadline", "type": "uint256"}]}}, "permit_small_uint96_variant": {"_note": "Same displayed JSON as the uint256 small-value Permit; value typed uint96 instead of uint256. Local digests differ (uint256 0xcdcb0a3f15d6701a00494bf9743e8c43c3cd222f7265f73cb94ad69e9e40f1f0 vs uint96 0xf76eecc6a3881354ca582eeabf818b1fbec3dda5e0b41005d93556bbec81db4e).", "domain": {"chainId": 11155111, "name": "Wrapped Ether", "verifyingContract": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "version": "1"}, "message": {"deadline": 0, "nonce": 0, "owner": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "spender": "0xF9F3e9230C3C75cdb4f6CFd4B0D3859D884290EB", "value": "1000000"}, "primaryType": "Permit", "types": {"Permit": [{"name": "owner", "type": "address"}, {"name": "spender", "type": "address"}, {"name": "value", "type": "uint96"}, {"name": "nonce", "type": "uint256"}, {"name": "deadline", "type": "uint256"}]}}};
+document.getElementById('btn-connect').onclick = async () => {
+  const projectId = document.getElementById('pid').value.trim();
+  if (!projectId) return log('Paste a Reown projectId first.');
+  client = await SignClient.init({ projectId, metadata: {
+    name: 'Keeper Round-2 Test dApp', description: 'Own test dApp, Sepolia only',
+    url: location.origin, icons: [] } });
+  const { uri, approval } = await client.connect({ requiredNamespaces: {
+    eip155: { methods: ['personal_sign', 'eth_signTypedData_v4', 'eth_sendTransaction'],
+      chains: ['eip155:11155111'], events: ['chainChanged', 'accountsChanged'] } } });
+  log('WC URI (scan with Keeper or paste into Keeper\'s WC connect):\n' + uri);
+  session = await approval();
+  log('SESSION topic: ' + session.topic);
+};
+async function req(method, params) {
+  if (!session) return log('Connect first.');
+  log('--- ' + method + ' ---\n' + JSON.stringify(params, null, 2).slice(0, 1500));
+  try {
+    const r = await client.request({ topic: session.topic, chainId: 'eip155:11155111',
+      request: { method, params } });
+    log('RESULT: ' + JSON.stringify(r).slice(0, 300));
+  } catch (e) { log('REJECTED/ERROR: ' + (e && e.message ? e.message : e)); }
+}
+document.getElementById('btn-ps').onclick = () =>
+  req('personal_sign', [ethers.hexlify(ethers.toUtf8Bytes('Keeper round-2 test message — sign this only on Sepolia testnet')), ADDR]);
+document.getElementById('btn-td').onclick = () =>
+  req('eth_signTypedData_v4', [ADDR, JSON.stringify(payloads.permit_max_2612)]);
+document.getElementById('btn-td2').onclick = () =>
+  req('eth_signTypedData_v4', [ADDR, JSON.stringify(payloads.permit2_max_single)]);
+document.getElementById('btn-td3').onclick = () =>
+  req('eth_signTypedData_v4', [ADDR, JSON.stringify(payloads.permit_max_2612_reordered_types_same_json)]);
+document.getElementById('btn-tx').onclick = () =>
+  req('eth_sendTransaction', [{ from: ADDR, to: ADDR, value: '0x38D7EA4C68000' }]);
+</script>
+</body>
+</html>

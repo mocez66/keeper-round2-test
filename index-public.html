@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keeper Round-2 Test dApp — TON Connect (testnet only)</title>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<style>body{font-family:system-ui;max-width:720px;margin:2em auto;padding:0 1em}button{display:block;margin:.5em 0;padding:.6em 1em}pre{background:#111;color:#0f0;padding:1em;overflow:auto;font-size:12px}#log{white-space:pre-wrap}</style>
+</head>
+<body>
+<h1>Keeper Round-2 Test dApp (own, TON testnet only) — public-hosted copy</h1>
+<p>Wallet under test: Keeper web / extension, switched to <b>TON testnet</b>, holding the
+fresh round-2 test wallet <code>kQBzEORMSz8BraD8Jw1W3V7Uy2w70JfXsjeQekFl3GrtbYW1</code>
+(fund it from a testnet faucet first). Nothing here touches mainnet.</p>
+<div id="ton-connect"></div>
+<button id="btn-l1">L1 — send 3-message tx (failing middle: config contract)</button>
+<button id="btn-l1c">L1 control — send 2-message tx (both plain)</button>
+<button id="btn-l4">L4 — send variants payload (benign messages + divergent battery variant)</button>
+<button id="btn-l1b">L1 variant B — send 3-message tx (failing middle: bad-seqno signed_internal to a deployed v5 wallet)</button>
+<pre id="log">Ready. Connect first.</pre>
+<script>
+const log = (s) => { document.getElementById('log').textContent += '\n' + s; };
+const ui = new TON_CONNECT_UI.TonConnectUI({
+  manifestUrl: 'https://mocez66.github.io/keeper-round2-test/manifest.json',
+  buttonRootId: 'ton-connect'
+});
+const freshUntil = () => Math.floor(Date.now() / 1000) + 600;
+const PAYLOADS = {"l1-tonconnect-payload.json": {"valid_until": 1794061728, "network": "-3", "from": "kQBzEORMSz8BraD8Jw1W3V7Uy2w70JfXsjeQekFl3GrtbYW1", "messages": [{"address": "kQCs-TdWlRRkJdDqujEegZlGANPkPN4cBa15iDEyWZRGQrMF", "amount": "10000000"}, {"address": "-1:3333333333333333333333333333333333333333333333333333333333333333", "amount": "10000000"}, {"address": "kQBrrF9w5k2NKhVjStWOzajo3mFL_78WoUfDPa2rP4q1sp9n", "amount": "10000000"}]}, "l1-control-payload.json": {"valid_until": 1794061728, "network": "-3", "from": "kQBzEORMSz8BraD8Jw1W3V7Uy2w70JfXsjeQekFl3GrtbYW1", "messages": [{"address": "kQCs-TdWlRRkJdDqujEegZlGANPkPN4cBa15iDEyWZRGQrMF", "amount": "10000000"}, {"address": "kQBrrF9w5k2NKhVjStWOzajo3mFL_78WoUfDPa2rP4q1sp9n", "amount": "10000000"}]}, "l4-variants-payload.json": {"_round2_note": "valid_until is a placeholder; refresh-payload.mjs rewrites it to now+600 before the browser check. messages (canonical): 0.01 TON to a throwaway. messagesVariants.battery.messages (what executes when Battery is the selected fee method): 0.5 TON + 0.5 TON to two OTHER throwaways. If the sheet shows only the 0.01 TON action while Battery is the default method, the default execution differs from `messages`. All three recipients are throwaways whose keys were discarded (see l4-addresses.json); no user funds involved.", "messages": [{"address": "kQDUXRRZTye7ZJfMiPwgkP-49MzrtsfrmqxvVbS9trfT85NS", "amount": "10000000"}], "messagesVariants": {"battery": {"messages": [{"address": "kQCHVkowmBmxc2mFXY2RdYqBmy8QQ_A-b5KLD1WvAmLwbVTe", "amount": "500000000"}, {"address": "kQDn3iQ87hCdMzWYIM79glMjkWTljuli57wsmzoXsRRBM7H_", "amount": "500000000"}]}}, "network": "-3", "valid_until": 1794061728}, "l1-variantB-payload.json": {"valid_until": 1794061728, "network": "-3", "from": "kQBzEORMSz8BraD8Jw1W3V7Uy2w70JfXsjeQekFl3GrtbYW1", "messages": [{"address": "kQCs-TdWlRRkJdDqujEegZlGANPkPN4cBa15iDEyWZRGQrMF", "amount": "10000000"}, {"address": "kQAdRCBlCDY6iNPRhe4fWrHkgdyM7j5hQUzof4vx-9SpoQCD", "amount": "10000000", "payload": "te6cckEBBAEAlAABoXNpbnR///8Rau9BWAAAA+ezZlh03+30nW3SuQTFD5RxSTAxD85XSEJGX5OKI10GKGkWNIxs0T9+FhiOQBDwPBOfYSNE0pS4ZXN4kvvY99oBoAECCg7DyG0DAgMAAABmYgBWfJurSooyEuh1XRiPQMyjAGnyHm8OAta8xBiZLMojIRh6EgAAAAAAAAAAAAAAAAAArL0NCg=="}, {"address": "kQBrrF9w5k2NKhVjStWOzajo3mFL_78WoUfDPa2rP4q1sp9n", "amount": "10000000"}]}};
+async function send(payloadFile, label) {
+  const p = JSON.parse(JSON.stringify(PAYLOADS[payloadFile]));
+  p.valid_until = freshUntil();
+  log('--- ' + label + ' ---\n' + JSON.stringify(p, null, 2));
+  try {
+    const res = await ui.sendTransaction(p);
+    log('RESULT boc: ' + res.boc.slice(0, 80) + '... (len ' + res.boc.length + ')');
+  } catch (e) { log('REJECTED/ERROR: ' + (e && e.message ? e.message : e)); }
+}
+document.getElementById('btn-l1').onclick = () => send('l1-tonconnect-payload.json', 'L1 failing-middle');
+document.getElementById('btn-l1c').onclick = () => send('l1-control-payload.json', 'L1 control');
+document.getElementById('btn-l4').onclick = () => send('l4-variants-payload.json', 'L4 variants');
+document.getElementById('btn-l1b').onclick = () => send('l1-variantB-payload.json', 'L1 variant B');
+</script>
+</body>
+</html>
